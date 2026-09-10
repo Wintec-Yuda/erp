@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ERP System
 
-## Getting Started
+Aplikasi ERP modern berbasis Next.js (App Router) dengan TypeScript, Prisma + SQLite, NextAuth (Auth.js) untuk autentikasi & RBAC, Tailwind CSS untuk UI, serta axios + React Query untuk data-fetching di client.
 
-First, run the development server:
+## Modul
+
+- **Inventory**: Products, Categories, Warehouses, Stock & Stock Movements
+- **Purchasing**: Suppliers, Purchase Orders (dengan alur DRAFT → ORDERED → RECEIVED yang otomatis menambah stok)
+- **Sales**: Customers, Sales Orders (dengan alur DRAFT → CONFIRMED yang otomatis mengurangi stok → SHIPPED → COMPLETED)
+- **Finance**: Chart of Accounts, Invoices (Payable/Receivable) & Payments
+- **HR**: Departments, Employees, Payroll
+
+## Role & Akses (RBAC)
+
+- **ADMIN**: akses penuh ke semua modul termasuk pengaturan.
+- **MANAGER**: akses penuh ke operasional, termasuk HR (payroll) dan Finance (chart of accounts).
+- **STAFF**: akses operasional dasar (input transaksi harian), tanpa akses ke payroll dan chart of accounts.
+
+## Menjalankan Secara Lokal
 
 ```bash
+npm install
+npm run db:migrate   # generate & apply Prisma migration (development)
+npm run db:seed      # membuat user demo + data awal
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Akun demo setelah seeding:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Role    | Email             | Password   |
+|---------|-------------------|------------|
+| Admin   | admin@erp.local   | admin123   |
+| Manager | manager@erp.local | manager123 |
+| Staff   | staff@erp.local   | staff123   |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Struktur Proyek
 
-## Learn More
+```
+prisma/
+  schema.prisma       # skema data seluruh modul
+  seed.ts             # data awal (admin user, contoh produk, dll)
+src/
+  app/
+    (erp)/            # halaman-halaman yang butuh sidebar & sesi login
+    api/              # REST API routes (App Router route handlers)
+    login/            # halaman login
+  components/
+    ui/               # komponen UI dasar (Button, Card, Modal, dll)
+    crud/             # komponen generik untuk CRUD sederhana
+    layout/           # sidebar & layout
+  lib/
+    prisma.ts         # Prisma client singleton
+    auth.ts           # konfigurasi NextAuth + RBAC
+    api-auth.ts        # helper requireSession() untuk API routes
+    api-response.ts    # helper response & error handler API
+    validations.ts      # skema validasi zod
+    api-client.ts       # axios instance untuk client
 
-To learn more about Next.js, take a look at the following resources:
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Catatan Skalabilitas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Setiap modul memiliki API route, skema validasi, dan halaman UI yang terpisah sehingga mudah dipecah menjadi microservice atau ditambah modul baru.
+- Transaksi stok (penerimaan PO, konfirmasi SO) dibungkus dalam `prisma.$transaction` agar konsisten.
+- RBAC diterapkan di dua level: middleware (halaman) dan `requireSession()` (API), sehingga proteksi tetap berlaku meski API diakses langsung.
