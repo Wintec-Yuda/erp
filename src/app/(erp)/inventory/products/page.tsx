@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input, Select } from "@/components/ui/form";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 
 type Category = { id: string; name: string };
 type Stock = { quantity: number; warehouse: { name: string } };
@@ -39,6 +39,7 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [search, setSearch] = useState("");
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -118,6 +119,16 @@ export default function ProductsPage() {
 
   const busy = createMutation.isPending || updateMutation.isPending;
 
+  const filteredProducts = products?.filter((p) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.sku.toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
+      (p.category?.name ?? "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -125,6 +136,16 @@ export default function ProductsPage() {
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Product
         </Button>
+      </div>
+
+      <div className="mb-4 relative max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by SKU, name, or category..."
+          className="pl-9"
+        />
       </div>
 
       <Card className="overflow-x-auto">
@@ -146,7 +167,12 @@ export default function ProductsPage() {
                 <td colSpan={7} className="px-4 py-6 text-center text-slate-400">Loading...</td>
               </tr>
             )}
-            {products?.map((p) => {
+            {!isLoading && filteredProducts?.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-400">No products found.</td>
+              </tr>
+            )}
+            {filteredProducts?.map((p) => {
               const totalStock = p.stocks.reduce((s, st) => s + st.quantity, 0);
               const isLow = totalStock <= p.minStock;
               return (
